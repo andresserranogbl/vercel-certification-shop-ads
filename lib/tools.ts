@@ -20,8 +20,9 @@ import {
   getProducts,
   getProductById,
 } from "@/lib/api";
-import { start } from "workflow/api"; 
-import { returnFlow } from "./workflows/return-flow"; 
+import { start } from "workflow/api";
+import { returnFlow } from "./workflows/return-flow";
+import { createOrGetSandbox, SANDBOX_NAME } from "@/lib/sandbox";
 
 export const searchProducts = tool({
   description: `Search the Vercel swag store product catalog and browse/compare multiple products at once. Use this whenever the user asks what the store sells, wants recommendations, or is browsing a category. Returns a trimmed summary per product (name, one image, price, description) — it does NOT include stock levels or the full image gallery. Once the user has settled on ONE specific item, switch to getProductDetails for the complete picture instead of relying on these trimmed fields. Optionally narrow results to a single category.`,
@@ -331,5 +332,22 @@ export const getSalesAnalytics = tool({
         err instanceof ApiRequestError ? err.message : "Unknown error";
       return { count: 0, sales: [], error: message };
     }
+  },
+});
+
+export const bash = tool({
+  description: "Run a bash command in the sandbox environment",
+  inputSchema: z.object({
+    command: z.string().describe("The bash command to run"),
+  }),
+  execute: async ({ command }) => {
+    "use step";
+    const sandbox = await createOrGetSandbox(SANDBOX_NAME);
+    const result = await sandbox.runCommand("bash", ["-lc", command]);
+    return {
+      stdout: await result.stdout(),
+      stderr: await result.stderr(),
+      exitCode: result.exitCode,
+    };
   },
 });
